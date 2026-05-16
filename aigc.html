@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGC — 人工智能生成内容</title>
+<style>
+:root {
+  --bg-deep: #0a0a1a;
+  --bg-mid: #0d1025;
+  --cyan: #00f0ff;
+  --purple: #a855f7;
+  --gold: #f59e0b;
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0a0b8;
+  --text-muted: #606078;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Consolas", monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100vh;
+}
+
+canvas#particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+section {
+  height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 4rem;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+nav#dots {
+  position: fixed;
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+nav#dots .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+nav#dots .dot.active {
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+h1 { font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 600; }
+h3 { font-size: clamp(1.2rem, 2.5vw, 1.8rem); font-weight: 500; }
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-center { text-align: center; }
+.overline {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+.hero-title {
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+}
+.hero-sub {
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  animation: float 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  body { scroll-snap-type: none; }
+  .scroll-hint { animation: none; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+.scroll-arrow {
+  width: 1px;
+  height: 30px;
+  background: linear-gradient(to bottom, var(--cyan), transparent);
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 3rem;
+  max-width: 600px;
+  text-align: center;
+}
+.analogy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 900px;
+  width: 100%;
+}
+.analogy-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+.analogy-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0,240,255,0.3);
+  transition-delay: 0s;
+}
+.analogy-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.analogy-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+.analogy-card p { color: var(--text-secondary); font-size: 0.9rem; }
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.5rem;
+  max-width: 1000px;
+  width: 100%;
+}
+.cap-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.cap-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(168,85,247,0.4);
+  box-shadow: 0 8px 32px rgba(168,85,247,0.1);
+  transition-delay: 0s;
+}
+.cap-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.cap-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+.cap-card p { color: var(--text-secondary); font-size: 0.8rem; }
+
+.demo-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 800px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+.demo-box {
+  flex: 1;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+.demo-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: var(--cyan);
+  margin-bottom: 0.75rem;
+}
+.demo-text {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.demo-arrow {
+  font-size: 1.5rem;
+  color: var(--purple);
+  flex-shrink: 0;
+}
+.demo-img-placeholder {
+  aspect-ratio: 16/9;
+  background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(168,85,247,0.05));
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+.demo-img-placeholder p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+.demo-text-output {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 1rem;
+}
+.demo-text-output p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.8;
+  font-style: italic;
+}
+
+.industry-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.5rem;
+  max-width: 1000px;
+  width: 100%;
+}
+.industry-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.industry-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.industry-card:hover::before { opacity: 1; }
+.industry-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0,240,255,0.2);
+  transition-delay: 0s;
+}
+.industry-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.industry-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+.industry-card p { color: var(--text-secondary); font-size: 0.85rem; }
+
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 850px;
+  width: 100%;
+  margin-bottom: 3rem;
+}
+.trend-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+}
+.trend-number {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+.trend-card h3 { margin-bottom: 0.75rem; }
+.trend-card p { color: var(--text-secondary); font-size: 0.9rem; }
+.trend-stat {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  max-width: 600px;
+}
+.stat-number {
+  font-size: 3rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.cta-content { max-width: 600px; }
+.cta-title {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+}
+.cta-sub {
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  margin-bottom: 2.5rem;
+}
+.cta-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cta-btn {
+  padding: 0.85rem 2rem;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+.cta-btn-primary {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: #fff;
+}
+.cta-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,240,255,0.3);
+}
+.cta-btn-ghost {
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--text-primary);
+}
+.cta-btn-ghost:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.cta-footer {
+  margin-top: 4rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.anim-fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.anim-fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.anim-fade-in {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.anim-fade-in.visible {
+  opacity: 1;
+}
+.anim-scale-in {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.anim-scale-in.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.delay-1 { transition-delay: 0.1s; }
+.delay-2 { transition-delay: 0.2s; }
+.delay-3 { transition-delay: 0.3s; }
+.delay-4 { transition-delay: 0.4s; }
+.delay-5 { transition-delay: 0.5s; }
+
+@media (max-width: 768px) {
+  section { padding: 2rem 1.5rem; }
+  nav#dots { right: 0.75rem; gap: 0.75rem; }
+  nav#dots .dot { width: 8px; height: 8px; }
+
+  .analogy-grid,
+  .industry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .capability-grid { grid-template-columns: repeat(3, 1fr); }
+  .trend-grid { grid-template-columns: 1fr; }
+  .demo-row { flex-direction: column; }
+  .demo-arrow { transform: rotate(90deg); }
+}
+
+@media (max-width: 480px) {
+  .analogy-grid,
+  .capability-grid,
+  .industry-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .trend-stat {
+    flex-direction: column;
+    text-align: center;
+  }
+  .cta-links { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<nav id="dots"></nav>
+<section id="s1">
+  <div class="hero-content text-center">
+    <p class="overline gradient-text">AI GENERATED CONTENT</p>
+    <h1 class="hero-title anim-fade-up">AI<span class="gradient-text">生成</span>内容</h1>
+    <p class="hero-sub anim-fade-up delay-2">每个人都能创造的<br>新时代已经到来</p>
+    <div class="scroll-hint">
+      <span>向下探索</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </div>
+</section>
+<section id="s2">
+  <h2 class="section-title">什么是 <span class="gradient-text">AIGC</span>？</h2>
+  <p class="section-desc">AI Generated Content — 人工智能自动生成文字、图像、音乐、视频等内容</p>
+  <div class="analogy-grid">
+    <div class="analogy-card anim-fade-up delay-1">
+      <div class="analogy-icon">🖋️</div>
+      <h3>像一支永不疲倦的笔</h3>
+      <p>输入一个想法，几秒内生成千字文案</p>
+    </div>
+    <div class="analogy-card anim-fade-up delay-2">
+      <div class="analogy-icon">🎨</div>
+      <h3>像一个随叫随到的画师</h3>
+      <p>描述你脑海的画面，它帮你画出来</p>
+    </div>
+    <div class="analogy-card anim-fade-up delay-3">
+      <div class="analogy-icon">🧠</div>
+      <h3>像一位全天候的伙伴</h3>
+      <p>24小时在线，随时帮你创作与迭代</p>
+    </div>
+  </div>
+</section>
+<section id="s3">
+  <h2 class="section-title">AIGC <span class="gradient-text">能做什么</span></h2>
+  <div class="capability-grid">
+    <div class="cap-card anim-fade-up delay-1">
+      <div class="cap-icon">📝</div>
+      <h3>文字生成</h3>
+      <p>文章、文案、诗歌、剧本，一键生成</p>
+    </div>
+    <div class="cap-card anim-fade-up delay-2">
+      <div class="cap-icon">🖼️</div>
+      <h3>图像生成</h3>
+      <p>输入描述词，AI 为你绘制画面</p>
+    </div>
+    <div class="cap-card anim-fade-up delay-3">
+      <div class="cap-icon">🎬</div>
+      <h3>视频生成</h3>
+      <p>文字转视频，几分钟产出短片</p>
+    </div>
+    <div class="cap-card anim-fade-up delay-4">
+      <div class="cap-icon">🎵</div>
+      <h3>音乐生成</h3>
+      <p>选择风格，AI 为你创作配乐</p>
+    </div>
+    <div class="cap-card anim-fade-up delay-5">
+      <div class="cap-icon">💻</div>
+      <h3>代码生成</h3>
+      <p>用自然语言描述需求，自动编写代码</p>
+    </div>
+  </div>
+</section>
+<section id="s4">
+  <h2 class="section-title">效果<span class="gradient-text">展示</span></h2>
+  <p class="section-desc">看看 AI 如何将简单的输入变成惊艳的产出</p>
+  <div class="demo-row anim-fade-up delay-1">
+    <div class="demo-box demo-input">
+      <p class="demo-label">INPUT</p>
+      <p class="demo-text">"一只穿宇航服的柴犬在月球上漫步，写实风格，电影级光影"</p>
+    </div>
+    <div class="demo-arrow">→</div>
+    <div class="demo-box demo-output">
+      <p class="demo-label">OUTPUT</p>
+      <div class="demo-img-placeholder">
+        <span>🛸</span>
+        <p>AI 生成的图像</p>
+      </div>
+    </div>
+  </div>
+  <div class="demo-row anim-fade-up delay-2">
+    <div class="demo-box demo-input">
+      <p class="demo-label">INPUT</p>
+      <p class="demo-text">"帮我写一段关于夏天的散文，300字，温柔治愈"</p>
+    </div>
+    <div class="demo-arrow">→</div>
+    <div class="demo-box demo-output">
+      <p class="demo-label">OUTPUT</p>
+      <div class="demo-text-output">
+        <p>"蝉鸣在梧桐叶间织成一张金黄色的网，每一个网眼都漏下斑驳的光..."</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="s5">
+  <h2 class="section-title">改变哪些<span class="gradient-text">行业</span></h2>
+  <div class="industry-grid">
+    <div class="industry-card anim-fade-up delay-1">
+      <div class="industry-icon">📚</div>
+      <h3>教育</h3>
+      <p>个性化学习内容，自动出题与批改</p>
+    </div>
+    <div class="industry-card anim-fade-up delay-2">
+      <div class="industry-icon">🎨</div>
+      <h3>设计</h3>
+      <p>UI原型、Logo、海报，秒级出图</p>
+    </div>
+    <div class="industry-card anim-fade-up delay-3">
+      <div class="industry-icon">🎬</div>
+      <h3>影视</h3>
+      <p>剧本辅助、特效生成、虚拟演员</p>
+    </div>
+    <div class="industry-card anim-fade-up delay-4">
+      <div class="industry-icon">🛒</div>
+      <h3>电商</h3>
+      <p>商品图批量生成、智能客服、文案</p>
+    </div>
+    <div class="industry-card anim-fade-up delay-5">
+      <div class="industry-icon">🏥</div>
+      <h3>医疗</h3>
+      <p>辅助诊断报告、医学影像分析</p>
+    </div>
+  </div>
+</section>
+<section id="s6">
+  <h2 class="section-title">未来<span class="gradient-text">趋势</span></h2>
+  <div class="trend-grid">
+    <div class="trend-card anim-fade-up delay-1">
+      <div class="trend-number gradient-text">01</div>
+      <h3>多模态融合</h3>
+      <p>文本、图像、视频、3D 跨模态生成，一个 prompt 搞定一切</p>
+    </div>
+    <div class="trend-card anim-fade-up delay-2">
+      <div class="trend-number gradient-text">02</div>
+      <h3>实时交互生成</h3>
+      <p>像聊天一样实时调整生成结果，所见即所得</p>
+    </div>
+    <div class="trend-card anim-fade-up delay-3">
+      <div class="trend-number gradient-text">03</div>
+      <h3>人人都是创作者</h3>
+      <p>创作门槛降到零，创意不再被技术所限</p>
+    </div>
+  </div>
+  <div class="trend-stat anim-fade-up delay-4">
+    <span class="stat-number gradient-text">92%</span>
+    <span class="stat-label">的创意从业者认为 AIGC 将重塑他们的工作方式</span>
+  </div>
+</section>
+<section id="s7">
+  <div class="cta-content text-center">
+    <h2 class="cta-title anim-scale-in">创造<span class="gradient-text">未来</span>，<br>从这一刻开始</h2>
+    <p class="cta-sub anim-fade-up delay-2">AIGC 不是替代你，而是让你变得更强大</p>
+    <div class="cta-links">
+      <a href="#" class="cta-btn cta-btn-primary">开始体验 AIGC</a>
+      <a href="#" class="cta-btn cta-btn-ghost">了解更多 →</a>
+    </div>
+    <p class="cta-footer">Made with <span class="gradient-text">AI</span> · 2026</p>
+  </div>
+</section>
+<script>
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+if (!ctx) throw new Error('Canvas 2D context not available');
+let particles = [];
+const PARTICLE_COUNT = 80;
+const CONNECT_DIST = 150;
+
+let resizePending = false;
+function resize() {
+  if (resizePending) return;
+  resizePending = true;
+  requestAnimationFrame(() => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    for (const p of particles) {
+      p.x = Math.max(0, Math.min(canvas.width, p.x));
+      p.y = Math.max(0, Math.min(canvas.height, p.y));
+    }
+    resizePending = false;
+  });
+}
+window.addEventListener('resize', resize);
+resize();
+
+class Particle {
+  constructor() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = (Math.random() - 0.5) * 0.5;
+    this.r = Math.random() * 2 + 1;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+ctx.fillStyle = 'rgba(0, 240, 255, 0.6)';
+
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles.push(new Particle());
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].update();
+    particles[i].draw();
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < CONNECT_DIST) {
+        const alpha = 1 - dist / CONNECT_DIST;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.3})`;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+ctx.lineWidth = 0.5;
+
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+if (motionQuery.matches) {
+  // Draw static frame for reduced motion
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].draw();
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < CONNECT_DIST) {
+        const alpha = 1 - dist / CONNECT_DIST;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.3})`;
+        ctx.stroke();
+      }
+    }
+  }
+} else {
+  animate();
+}
+
+// Navigation dots
+const sections = document.querySelectorAll('section');
+const dotsNav = document.getElementById('dots');
+const dots = [];
+
+sections.forEach((section, i) => {
+  const dot = document.createElement('button');
+  dot.className = 'dot';
+  dot.setAttribute('aria-label', '第' + (i + 1) + '页');
+  dot.addEventListener('click', () => {
+    section.scrollIntoView({ behavior: 'smooth' });
+  });
+  dotsNav.appendChild(dot);
+  dots.push(dot);
+});
+
+// Intersection Observer for dot highlighting
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const index = Array.from(sections).indexOf(entry.target);
+      dots.forEach((d, i) => d.classList.toggle('active', i === index));
+    }
+  });
+}, { threshold: 0.5 });
+
+sections.forEach(s => navObserver.observe(s));
+
+// Animation observer
+const animObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const els = entry.target.querySelectorAll('.anim-fade-up, .anim-fade-in, .anim-scale-in');
+    if (entry.isIntersecting) {
+      els.forEach(el => el.classList.add('visible'));
+    } else {
+      els.forEach(el => el.classList.remove('visible'));
+    }
+  });
+}, { threshold: 0.2 });
+
+sections.forEach(s => animObserver.observe(s));
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  let current = 0;
+  sections.forEach((s, i) => {
+    const rect = s.getBoundingClientRect();
+    if (rect.top >= -100 && rect.top <= 100) current = i;
+  });
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const next = Math.min(current + 1, sections.length - 1);
+    sections[next].scrollIntoView({ behavior: 'smooth' });
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    const prev = Math.max(current - 1, 0);
+    sections[prev].scrollIntoView({ behavior: 'smooth' });
+  }
+});
+</script>
+</body>
+</html>
